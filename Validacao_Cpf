@@ -1,0 +1,155 @@
+// CPFValidator.java
+public class CPFValidator {
+    public static boolean validaCPF(String cpf) {
+        cpf = cpf.replaceAll("\\D", "");
+        if (cpf.length() != 11 || cpf.chars().distinct().count() == 1) return false;
+
+        for (int i = 9; i <= 10; i++) {
+            int soma = 0;
+            for (int j = 0; j < i; j++) {
+                soma += (cpf.charAt(j) - '0') * ((i + 1) - j);
+            }
+            int digito = (soma * 10) % 11;
+            if (digito == 10) digito = 0;
+            if (digito != (cpf.charAt(i) - '0')) return false;
+        }
+        return true;
+    }
+}
+
+// CPFProcessor.java
+import java.io.*;
+import java.util.*;
+
+public class CPFProcessor implements Runnable {
+    private List<File> arquivos;
+    private int[] resultados;
+
+    public CPFProcessor(List<File> arquivos, int[] resultados) {
+        this.arquivos = arquivos;
+        this.resultados = resultados;
+    }
+
+    @Override
+    public void run() {
+        for (File arquivo : arquivos) {
+            try (BufferedReader br = new BufferedReader(new FileReader(arquivo))) {
+                String linha;
+                while ((linha = br.readLine()) != null) {
+                    if (CPFValidator.validaCPF(linha)) {
+                        synchronized (resultados) {
+                            resultados[0]++;
+                        }
+                    } else {
+                        synchronized (resultados) {
+                            resultados[1]++;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                System.out.println("Erro ao ler " + arquivo.getName());
+            }
+        }
+    }
+}
+
+// Utils.java
+import java.io.File;
+import java.util.*;
+
+public class Utils {
+    public static List<List<File>> dividirArquivos(File[] arquivos, int nThreads) {
+        List<List<File>> listas = new ArrayList<>();
+        for (int i = 0; i < nThreads; i++) listas.add(new ArrayList<>());
+        for (int i = 0; i < arquivos.length; i++) {
+            listas.get(i % nThreads).add(arquivos[i]);
+        }
+        return listas;
+    }
+
+    public static File[] obterArquivosOrdenados() {
+        File pasta = new File("arquivos");
+        File[] arquivos = pasta.listFiles((dir, name) -> name.endsWith(".txt"));
+        Arrays.sort(arquivos);
+        return arquivos;
+    }
+}
+
+// Template de execução (Versão Genérica)
+import java.io.*;
+import java.util.*;
+
+public class ExecutorVersao {
+    public static void executar(int nThreads, String nomeArquivoTempo) throws Exception {
+        long inicio = System.currentTimeMillis();
+        File[] arquivos = Utils.obterArquivosOrdenados();
+        int[] resultados = new int[2];
+
+        List<List<File>> distribuicao = Utils.dividirArquivos(arquivos, nThreads);
+        List<Thread> threads = new ArrayList<>();
+
+        for (List<File> parte : distribuicao) {
+            Thread t = new Thread(new CPFProcessor(parte, resultados));
+            threads.add(t);
+            t.start();
+        }
+        for (Thread t : threads) t.join();
+
+        long fim = System.currentTimeMillis();
+        System.out.printf("Válidos: %d, Inválidos: %d\n", resultados[0], resultados[1]);
+
+        try (PrintWriter pw = new PrintWriter("tempos/" + nomeArquivoTempo)) {
+            pw.printf("Tempo: %d ms\n", fim - inicio);
+        }
+    }
+}
+
+// Versoes
+
+public class Versao1Thread {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(1, "versao_1_thread.txt");
+    }
+}
+
+public class Versao2Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(2, "versao_2_threads.txt");
+    }
+}
+
+public class Versao3Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(3, "versao_3_threads.txt");
+    }
+}
+
+public class Versao5Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(5, "versao_5_threads.txt");
+    }
+}
+
+public class Versao6Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(6, "versao_6_threads.txt");
+    }
+}
+
+public class Versao10Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(10, "versao_10_threads.txt");
+    }
+}
+
+public class Versao15Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(15, "versao_15_threads.txt");
+    }
+}
+
+public class Versao30Threads {
+    public static void main(String[] args) throws Exception {
+        ExecutorVersao.executar(30, "versao_30_threads.txt");
+    }
+}
